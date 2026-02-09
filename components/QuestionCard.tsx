@@ -47,6 +47,11 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, user, onLockedCli
     }
   };
 
+  const reportError = () => {
+    const message = encodeURIComponent(`Olá! Gostaria de reportar uma inconsistência na questão ID: ${question.id} (${question.institution} ${question.year}). Assunto: ${question.subject}`);
+    window.open(`https://wa.me/5561993988470?text=${message}`, '_blank');
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6 transition-all hover:shadow-md">
       <div className="p-6">
@@ -55,7 +60,13 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, user, onLockedCli
             <span className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded uppercase tracking-tighter">{question.institution}</span>
             <span className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded uppercase tracking-tighter">{question.year}</span>
           </div>
-          <span className="text-emerald-600 text-[10px] font-black uppercase tracking-widest">{question.subject}</span>
+          <button 
+            onClick={reportError}
+            className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition-colors uppercase flex items-center"
+          >
+            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            Reportar Inconsistência
+          </button>
         </div>
 
         <p className="text-slate-800 text-lg mb-6 leading-relaxed font-medium">{question.text}</p>
@@ -100,6 +111,12 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, user, onLockedCli
               </>
             )}
           </button>
+          
+          {showExplanation && (
+            <div className="text-[10px] text-slate-400 italic font-medium">
+              As explicações são geradas por IA. Sempre valide com a legislação vigente.
+            </div>
+          )}
         </div>
 
         {showExplanation && analysis && (

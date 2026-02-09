@@ -41,7 +41,9 @@ export async function analyzeQuestion(question: Question): Promise<QuestionAnaly
 }
 
 export async function searchHistoricalQuestions(query: string): Promise<Question[]> {
-    const prompt = `Gere 5 questões baseadas em concursos reais de Farmacêutico no Brasil sobre: ${query}. Retorne em JSON.`;
+    const prompt = `Gere 5 questões baseadas em concursos REAIS E RECENTES (preferencialmente 2023, 2024 e 2025) de Farmacêutico no Brasil sobre: ${query}. 
+    As questões devem seguir rigorosamente o estilo de bancas como FGV, Cebraspe ou Vunesp. Retorne em JSON.`;
+    
     const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
@@ -75,7 +77,8 @@ export async function searchHistoricalQuestions(query: string): Promise<Question
 }
 
 export async function fetchExams(): Promise<Exam[]> {
-  const prompt = `Liste 5 provas famosas reais de concursos de farmacêutico (ex: EBSERH 2023, Marinha, etc). 
+  const prompt = `Liste 5 provas famosas REAIS de concursos de farmacêutico (focando em 2023, 2024 e 2025). 
+  Exemplos: EBSERH, Marinha, Perito Criminal, Prefeituras de Capitais. 
   Para cada uma, adicione um campo aiAnalysis curto descrevendo o perfil da prova.`;
   
   const response = await ai.models.generateContent({
@@ -105,8 +108,8 @@ export async function fetchExams(): Promise<Exam[]> {
 }
 
 export async function fetchQuestionsByExam(examTitle: string): Promise<Question[]> {
-  const prompt = `Gere 10 questões que compõem a prova real de concurso de Farmacêutico: ${examTitle}. 
-  As questões devem ser fiéis ao estilo da banca e ao conteúdo cobrado naquela edição.`;
+  const prompt = `Gere a íntegra de 10 questões que compuseram a prova de concurso de Farmacêutico: ${examTitle}. 
+  Busque a máxima fidelidade histórica aos enunciados e alternativas da banca original.`;
   
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",

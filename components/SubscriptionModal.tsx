@@ -74,7 +74,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                <div className="border-2 border-slate-100 p-6 rounded-2xl hover:border-emerald-500 transition-all cursor-pointer" onClick={() => handleStartCheckout('Plano Mensal', 29.90, 'R$ 29,90')}>
                  <h4 className="font-bold text-slate-800">Mensal</h4>
                  <p className="text-2xl font-black mt-2 text-slate-900">R$ 29,90</p>
@@ -85,10 +85,23 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                  <p className="text-2xl font-black mt-2 text-slate-900">R$ 19,90<span className="text-sm font-normal text-slate-400">/mês</span></p>
                </div>
             </div>
+
+            <div className="text-center pt-4 border-t border-slate-100">
+              <p className="text-sm text-slate-400 mb-2">Está com alguma dúvida sobre os planos?</p>
+              <a 
+                href="https://wa.me/5561993988470" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-emerald-600 font-bold text-sm hover:underline"
+              >
+                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.767 5.767 0 1.267.405 2.436 1.096 3.389l-.72 2.628 2.688-.705c.813.447 1.745.701 2.736.701 3.181 0 5.767-2.586 5.767-5.767 0-3.181-2.586-5.767-5.767-5.767zm3.38 8.057c-.15.42-.766.766-1.081.825-.315.06-.69.09-2.055-.48-1.74-.72-2.85-2.49-2.94-2.61-.09-.12-.735-.975-.735-1.875 0-.9.465-1.35.63-1.53.165-.18.36-.225.48-.225s.24 0 .345.015c.105.015.255-.045.39.285.15.36.51 1.245.555 1.335.045.09.075.195.015.315s-.09.18-.18.285c-.09.105-.195.24-.27.315-.09.09-.18.195-.075.375.105.18.465.765.99 1.23.675.6 1.245.795 1.425.885.18.09.285.075.39-.045s.45-.525.57-.705c.12-.18.24-.15.405-.09s1.05.495 1.23.585c.18.09.3.135.345.21.045.075.045.42-.105.84z"/></svg>
+                Fale com um consultor no WhatsApp
+              </a>
+            </div>
           </div>
         )}
 
-        {/* ... Outros passos de Checkout/Processamento (já existentes) ... */}
+        {/* ... Outros passos de Checkout/Processamento ... */}
         {step === 'checkout' && (
            <div className="p-8">
               <h3 className="text-xl font-bold mb-6">Finalizar Pagamento</h3>
