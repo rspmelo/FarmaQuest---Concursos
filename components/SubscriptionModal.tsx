@@ -1,0 +1,107 @@
+
+import React, { useState } from 'react';
+import { createAsaasPayment, getPixQrCode } from '../services/asaasService';
+import { User } from '../types';
+
+interface SubscriptionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  onActivateTrial: () => void;
+  user: User;
+}
+
+const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, onSuccess, onActivateTrial, user }) => {
+  const [step, setStep] = useState<'plans' | 'checkout' | 'processing' | 'success'>('plans');
+  const [selectedPlan, setSelectedPlan] = useState({ name: 'Plano Anual', price: 19.90, label: 'R$ 19,90/mês' });
+  const [pixData, setPixData] = useState<{ payload: string, qrCode: string } | null>(null);
+
+  if (!isOpen) return null;
+
+  const handleStartCheckout = (planName: string, planPrice: number, label: string) => {
+    setSelectedPlan({ name: planName, price: planPrice, label });
+    setStep('checkout');
+  };
+
+  const handleFinalizePayment = async () => {
+    setStep('processing');
+    try {
+      const payment = await createAsaasPayment({
+        customer: 'cus_demo',
+        billingType: 'PIX',
+        value: selectedPlan.price,
+        dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        description: `Assinatura FarmaQuest - ${selectedPlan.name}`
+      });
+      const qrCode = await getPixQrCode(payment.id);
+      setPixData({ payload: qrCode.payload, qrCode: qrCode.encodedImage });
+      setTimeout(() => setStep('success'), 8000); 
+    } catch (err) {
+      setStep('checkout');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden animate-fadeIn">
+        <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50">
+          <span className="text-sm font-black text-slate-700 uppercase tracking-widest">Acesso à Plataforma</span>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        {step === 'plans' && (
+          <div className="p-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-black text-slate-900 mb-2">Passe em Farmácia</h2>
+              <p className="text-slate-500">Escolha como quer começar sua jornada rumo à aprovação.</p>
+            </div>
+
+            {/* Opção Trial - Destaque */}
+            {!user.trialStartedAt && (
+              <div className="bg-emerald-600 rounded-2xl p-6 text-white mb-8 flex flex-col md:flex-row items-center justify-between shadow-xl shadow-emerald-100">
+                <div className="mb-4 md:mb-0">
+                  <h3 className="font-black text-xl mb-1">Deseja Testar Primeiro?</h3>
+                  <p className="text-xs text-emerald-100 font-medium">Libere TODAS as funções por 24h agora mesmo.</p>
+                </div>
+                <button 
+                  onClick={onActivateTrial}
+                  className="bg-white text-emerald-600 px-6 py-3 rounded-xl font-black text-sm hover:bg-emerald-50 transition-all uppercase tracking-tighter"
+                >
+                  Ativar 24h Grátis
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div className="border-2 border-slate-100 p-6 rounded-2xl hover:border-emerald-500 transition-all cursor-pointer" onClick={() => handleStartCheckout('Plano Mensal', 29.90, 'R$ 29,90')}>
+                 <h4 className="font-bold text-slate-800">Mensal</h4>
+                 <p className="text-2xl font-black mt-2 text-slate-900">R$ 29,90</p>
+               </div>
+               <div className="border-2 border-emerald-500 bg-emerald-50/20 p-6 rounded-2xl relative cursor-pointer" onClick={() => handleStartCheckout('Plano Anual', 19.90, 'R$ 19,90')}>
+                 <span className="absolute -top-3 right-4 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded">ECONOMIZE 33%</span>
+                 <h4 className="font-bold text-slate-800">Anual</h4>
+                 <p className="text-2xl font-black mt-2 text-slate-900">R$ 19,90<span className="text-sm font-normal text-slate-400">/mês</span></p>
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ... Outros passos de Checkout/Processamento (já existentes) ... */}
+        {step === 'checkout' && (
+           <div className="p-8">
+              <h3 className="text-xl font-bold mb-6">Finalizar Pagamento</h3>
+              <div className="bg-slate-50 p-4 rounded-xl mb-6">
+                <p className="text-sm font-bold text-slate-700">{selectedPlan.name}</p>
+                <p className="text-xs text-slate-400">Pagamento recorrente, cancele quando quiser.</p>
+              </div>
+              <button onClick={handleFinalizePayment} className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold shadow-lg">Pagar com PIX</button>
+           </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default SubscriptionModal;

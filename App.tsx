@@ -1,202 +1,308 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, Question } from './types';
+import { User, Question, Exam, AppTab } from './types';
 import Navbar from './components/Navbar';
 import QuestionCard from './components/QuestionCard';
-import { searchHistoricalQuestions } from './services/geminiService';
+import SubscriptionModal from './components/SubscriptionModal';
+import { searchHistoricalQuestions, fetchExams, fetchQuestionsByExam } from './services/geminiService';
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<User>({
-    isLoggedIn: false,
-    isMember: false
-  });
-
+  const [user, setUser] = useState<User>({ isLoggedIn: false, isMember: false });
+  const [activeTab, setActiveTab] = useState<AppTab>('questoes');
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('Farmacologia Clínica');
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
 
-  const handleLogin = () => {
-    // Simulated login for demo
-    setUser({
-      isLoggedIn: true,
-      name: 'Dr. Farmacêutico',
-      email: 'contato@farma.com',
-      isMember: true
-    });
+  // Estados de Visualização de Prova
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+  const [examQuestions, setExamQuestions] = useState<Question[]>([]);
+
+  // Estados do Simulado
+  const [simuladoStep, setSimuladoStep] = useState<'setup' | 'running' | 'results'>('setup');
+  const [simuladoQuestions, setSimuladoQuestions] = useState<Question[]>([]);
+  const [currentSimuladoIndex, setCurrentSimuladoIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const savedTrial = localStorage.getItem('farmaquest_trial_start');
+    const isMember = localStorage.getItem('farmaquest_is_member') === 'true';
+    
+    if (savedTrial || isMember) {
+      setUser({
+        isLoggedIn: true,
+        name: 'Dr. Farmacêutico',
+        isMember: isMember,
+        trialStartedAt: savedTrial ? parseInt(savedTrial) : undefined
+      });
+    }
+  }, []);
+
+  const hasFullAccess = () => {
+    if (user.isMember) return true;
+    if (user.trialStartedAt) {
+      const hoursPassed = (Date.now() - user.trialStartedAt) / (1000 * 60 * 60);
+      return hoursPassed < 24;
+    }
+    return false;
+  };
+
+  const handleActivateTrial = () => {
+    const startTime = Date.now();
+    localStorage.setItem('farmaquest_trial_start', startTime.toString());
+    setUser(prev => ({ ...prev, isLoggedIn: true, trialStartedAt: startTime }));
+    setIsSubscriptionModalOpen(false);
+  };
+
+  const handleUpgradeSuccess = () => {
+    localStorage.setItem('farmaquest_is_member', 'true');
+    setUser(prev => ({ ...prev, isMember: true }));
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('farmaquest_trial_start');
+    localStorage.removeItem('farmaquest_is_member');
     setUser({ isLoggedIn: false, isMember: false });
   };
 
-  const fetchQuestions = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const results = await searchHistoricalQuestions(searchQuery);
-      setQuestions(results);
+      if (activeTab === 'questoes') {
+        const results = await searchHistoricalQuestions(searchQuery);
+        setQuestions(results);
+      } else if (activeTab === 'provas') {
+        const results = await fetchExams();
+        setExams(results);
+        setSelectedExam(null); // Resetar ao mudar de aba
+      }
     } catch (error) {
-      console.error("Error fetching questions:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchQuestions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchData();
+  }, [activeTab]);
+
+  const handleResolveExam = async (exam: Exam) => {
+    if (!hasFullAccess()) {
+      setIsSubscriptionModalOpen(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      const qs = await fetchQuestionsByExam(exam.title);
+      setExamQuestions(qs);
+      setSelectedExam(exam);
+      window.scrollTo(0, 0);
+    } catch (e) {
+      alert("Erro ao carregar prova.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startSimulado = async (topic: string, count: number) => {
+    if (!hasFullAccess()) {
+      setIsSubscriptionModalOpen(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      const qs = await searchHistoricalQuestions(`Simulado de ${topic} com ${count} questões`);
+      setSimuladoQuestions(qs);
+      setSimuladoStep('running');
+      setCurrentSimuladoIndex(0);
+      setUserAnswers({});
+    } catch (e) {
+      alert("Erro ao gerar simulado.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar user={user} onLogin={handleLogin} onLogout={handleLogout} />
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      <Navbar 
+        user={user} 
+        onLogin={() => setIsSubscriptionModalOpen(true)} 
+        onLogout={handleLogout} 
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          if (tab === 'simulados') setSimuladoStep('setup');
+        }}
+      />
+
+      <SubscriptionModal 
+        isOpen={isSubscriptionModalOpen} 
+        onClose={() => setIsSubscriptionModalOpen(false)}
+        onSuccess={handleUpgradeSuccess}
+        onActivateTrial={handleActivateTrial}
+        user={user}
+      />
 
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        <div className="md:flex md:gap-8">
-          {/* Sidebar Filters */}
-          <aside className="hidden md:block w-64 flex-shrink-0">
-            <div className="sticky top-24 space-y-6">
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-slate-800 mb-4">Filtros</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Ano</label>
-                    <select className="w-full bg-gray-50 border border-gray-200 rounded-md p-2 text-sm">
-                      <option>Todos</option>
-                      <option>2024</option>
-                      <option>2023</option>
-                      <option>2022</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Instituição</label>
-                    <select className="w-full bg-gray-50 border border-gray-200 rounded-md p-2 text-sm">
-                      <option>Todas</option>
-                      <option>EBSERH</option>
-                      <option>FGV</option>
-                      <option>CESPE/Cebraspe</option>
-                      <option>VUNESP</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Assunto</label>
-                    <div className="space-y-2">
-                      {['Farmacologia', 'Legislação', 'Análises Clínicas', 'Hospitalar', 'Toxicologia'].map((sub) => (
-                        <label key={sub} className="flex items-center text-sm text-gray-700">
-                          <input type="checkbox" className="mr-2 rounded text-emerald-600" />
-                          {sub}
-                        </label>
-                      ))}
-                    </div>
+        {activeTab === 'questoes' && (
+          <div className="md:flex md:gap-8 animate-fadeIn">
+            <aside className="hidden md:block w-64 flex-shrink-0">
+              <div className="sticky top-24 space-y-6">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                  <h3 className="font-bold text-slate-800 mb-4 text-sm">Filtros de Disciplina</h3>
+                  <div className="space-y-2">
+                    {['Farmacologia', 'Legislação', 'Bioquímica', 'Toxicologia', 'SUS'].map(area => (
+                       <button key={area} onClick={() => setSearchQuery(area)} className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
+                        {area}
+                       </button>
+                    ))}
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-emerald-600 p-6 rounded-xl text-white shadow-lg">
-                <h4 className="font-bold mb-2">Assine o Premium</h4>
-                <p className="text-sm text-emerald-50 opacity-90 mb-4">Tenha acesso a comentários ilimitados de professores IA para todas as questões do PCI Concursos e muito mais.</p>
-                <button className="w-full bg-white text-emerald-600 font-bold py-2 rounded-lg hover:bg-emerald-50 transition-colors">
-                  Ver Planos
-                </button>
-              </div>
-            </div>
-          </aside>
-
-          {/* Main Content */}
-          <div className="flex-1">
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold text-slate-900 mb-2">Questões de Concursos para Farmacêutico</h1>
-              <p className="text-gray-600">Explore milhares de questões reais com comentários profissionais.</p>
-            </div>
-
-            {/* Search Bar */}
-            <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex mb-8">
-              <input 
-                type="text" 
-                placeholder="Busque por tema (ex: Farmacovigilância, RDC 44...)" 
-                className="flex-1 px-4 py-2 focus:outline-none"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button 
-                onClick={fetchQuestions}
-                className="bg-emerald-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-emerald-700 transition-colors"
-              >
-                Buscar
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-                <p className="mt-4 text-gray-500 font-medium">Carregando questões atualizadas...</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {questions.length > 0 ? (
-                  questions.map((q) => (
-                    <QuestionCard key={q.id} question={q} user={user} />
-                  ))
-                ) : (
-                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-                    <p className="text-gray-500">Nenhuma questão encontrada para este termo.</p>
+                {!hasFullAccess() && (
+                  <div className="bg-emerald-600 p-6 rounded-2xl text-white shadow-xl shadow-emerald-100">
+                    <h4 className="font-bold mb-2">Acesso Ilimitado</h4>
+                    <p className="text-xs text-emerald-50 mb-4">Veja comentários da IA em todas as questões.</p>
+                    <button onClick={() => setIsSubscriptionModalOpen(true)} className="w-full bg-white text-emerald-600 font-bold py-2.5 rounded-xl hover:bg-emerald-50 transition-all">Começar Agora</button>
                   </div>
                 )}
               </div>
-            )}
+            </aside>
 
-            {/* Pagination Placeholder */}
-            {questions.length > 0 && (
-              <div className="mt-8 flex justify-center">
-                <nav className="flex items-center space-x-2">
-                  <button className="p-2 rounded-md bg-white border border-gray-200 text-gray-500 hover:bg-gray-50">Anterior</button>
-                  <button className="w-10 h-10 rounded-md bg-emerald-600 text-white font-bold">1</button>
-                  <button className="w-10 h-10 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">2</button>
-                  <button className="w-10 h-10 rounded-md bg-white border border-gray-200 text-gray-600 hover:bg-gray-50">3</button>
-                  <button className="p-2 rounded-md bg-white border border-gray-200 text-gray-500 hover:bg-gray-50">Próximo</button>
-                </nav>
+            <div className="flex-1">
+              <div className="mb-8">
+                <h1 className="text-3xl font-black text-slate-900 mb-2">Banco de Questões</h1>
+                <p className="text-slate-500">Explore questões reais comentadas por IA.</p>
               </div>
-            )}
+
+              <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-sm flex mb-8 focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
+                <input 
+                  type="text" 
+                  placeholder="Busque por tema..." 
+                  className="flex-1 px-4 py-3 focus:outline-none text-slate-700 bg-transparent"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && fetchData()}
+                />
+                <button onClick={fetchData} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all">Buscar</button>
+              </div>
+
+              {loading ? (
+                <div className="py-20 flex flex-col items-center">
+                  <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mb-4"></div>
+                  <p className="text-slate-400">Consultando IA...</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {questions.map((q) => <QuestionCard key={q.id} question={q} user={user} onLockedClick={() => setIsSubscriptionModalOpen(true)} />)}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {activeTab === 'provas' && (
+           <div className="animate-fadeIn">
+             {selectedExam ? (
+               <div className="max-w-4xl mx-auto">
+                 <div className="flex items-center justify-between mb-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div>
+                      <button onClick={() => setSelectedExam(null)} className="text-emerald-600 font-bold text-sm mb-2 flex items-center hover:underline">
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"></path></svg>
+                        Voltar para Provas
+                      </button>
+                      <h1 className="text-2xl font-black text-slate-900">{selectedExam.title}</h1>
+                      <p className="text-sm text-slate-500">{selectedExam.institution} • {selectedExam.location} • {selectedExam.year}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-widest">
+                        {examQuestions.length} Questões
+                      </span>
+                    </div>
+                 </div>
+
+                 <div className="space-y-8">
+                    {examQuestions.map((q, idx) => (
+                      <div key={q.id} className="relative">
+                        <div className="absolute -left-12 top-4 hidden lg:flex items-center justify-center w-8 h-8 bg-slate-200 rounded-lg text-slate-600 font-black text-xs">
+                          {idx + 1}
+                        </div>
+                        <QuestionCard question={q} user={user} onLockedClick={() => setIsSubscriptionModalOpen(true)} />
+                      </div>
+                    ))}
+                 </div>
+               </div>
+             ) : (
+               <>
+                <div className="mb-12 text-center max-w-3xl mx-auto">
+                  <h1 className="text-4xl font-black text-slate-900 mb-4">Provas na Íntegra</h1>
+                  <p className="text-lg text-slate-500">Estude examinando o conjunto completo das provas reais para farmacêutico.</p>
+                </div>
+                {loading ? (
+                   <div className="py-20 flex flex-col items-center">
+                    <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mb-4"></div>
+                    <p className="text-slate-400">Carregando provas famosas...</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {exams.map((exam) => (
+                      <div key={exam.id} className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden flex flex-col">
+                        <div className="flex-grow">
+                          <div className="flex justify-between items-start mb-4">
+                            <span className="text-[10px] font-black text-emerald-600 uppercase bg-emerald-50 px-2 py-1 rounded">{exam.year}</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{exam.difficulty}</span>
+                          </div>
+                          <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-emerald-600 transition-colors">{exam.title}</h3>
+                          <p className="text-sm text-slate-500 mb-4 font-medium">{exam.institution}</p>
+                          <div className="bg-slate-50 p-4 rounded-xl mb-6">
+                            <p className="text-xs text-slate-600 leading-relaxed italic">"{exam.aiAnalysis}"</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleResolveExam(exam)} 
+                          className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm hover:bg-emerald-600 transition-all shadow-lg hover:shadow-emerald-200"
+                        >
+                          Resolver Prova
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+               </>
+             )}
+           </div>
+        )}
+
+        {activeTab === 'simulados' && simuladoStep === 'setup' && (
+          <div className="max-w-4xl mx-auto animate-fadeIn">
+             <div className="bg-white rounded-3xl border border-slate-200 p-10 shadow-sm">
+                <div className="text-center mb-10">
+                  <h1 className="text-3xl font-black text-slate-900 mb-2">Simulado Personalizado</h1>
+                  <p className="text-slate-500">Configure seu teste e treine sob pressão de tempo.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                   <div className="p-6 border-2 border-slate-100 rounded-2xl bg-slate-50">
+                      <p className="text-xs font-black text-slate-400 uppercase mb-2">Tópico</p>
+                      <p className="font-bold text-slate-800">Mix Farmacêutico</p>
+                   </div>
+                   <div className="p-6 border-2 border-slate-100 rounded-2xl bg-slate-50">
+                      <p className="text-xs font-black text-slate-400 uppercase mb-2">Questões</p>
+                      <p className="font-bold text-slate-800">10 Questões</p>
+                   </div>
+                </div>
+                <button 
+                  onClick={() => startSimulado("Farmacologia", 10)}
+                  disabled={loading}
+                  className="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all"
+                >
+                  {loading ? 'Preparando Questões...' : 'INICIAR SIMULADO AGORA'}
+                </button>
+             </div>
+          </div>
+        )}
       </main>
-
-      <footer className="bg-slate-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center mb-4">
-                <span className="text-2xl font-bold text-emerald-400">Farma</span>
-                <span className="text-2xl font-bold text-white">Quest</span>
-              </div>
-              <p className="text-slate-400 max-w-sm">
-                A plataforma definitiva para farmacêuticos conquistarem sua vaga no serviço público através de tecnologia de ponta e didática avançada.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Links Úteis</h4>
-              <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#" className="hover:text-emerald-400">PCI Concursos</a></li>
-                <li><a href="#" className="hover:text-emerald-400">CFF - Conselho Federal</a></li>
-                <li><a href="#" className="hover:text-emerald-400">ANVISA</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Suporte</h4>
-              <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#" className="hover:text-emerald-400">Contato</a></li>
-                <li><a href="#" className="hover:text-emerald-400">Termos de Uso</a></li>
-                <li><a href="#" className="hover:text-emerald-400">Privacidade</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-12 pt-8 border-t border-slate-800 text-center text-slate-500 text-xs">
-            © 2024 FarmaQuest. Todos os direitos reservados. Informações extraídas com base em provas públicas do PCI Concursos.
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

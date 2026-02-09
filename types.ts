@@ -27,4 +27,18 @@ export interface User {
   name?: string;
   email?: string;
   isMember: boolean;
+  trialStartedAt?: number; // Timestamp de quando o teste começou
 }
+
+export interface Exam {
+  id: string;
+  title: string;
+  institution: string;
+  year: number;
+  location: string;
+  totalQuestions: number;
+  difficulty: 'Fácil' | 'Médio' | 'Difícil';
+  aiAnalysis?: string;
+}
+
+export type AppTab = 'questoes' | 'provas' | 'simulados';
