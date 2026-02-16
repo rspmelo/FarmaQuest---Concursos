@@ -15,26 +15,26 @@ const Logo: React.FC<LogoProps> = ({ className = "h-8 w-auto" }) => {
           fill="none" 
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Fundo Circular com Gradiente */}
+          {/* Fundo Circular com Gradiente - Ajustado para FEIFAR */}
           <defs>
             <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#10b981" /> {/* Emerald-500 */}
-              <stop offset="100%" stopColor="#0ea5e9" /> {/* Sky-500 */}
+              <stop offset="0%" stopColor="#F79433" /> {/* Brand Orange */}
+              <stop offset="100%" stopColor="#212543" /> {/* Brand Navy */}
             </linearGradient>
           </defs>
           
           <circle cx="50" cy="50" r="48" fill="url(#logo-gradient)" fillOpacity="0.1" />
           
-          {/* Metade da Pílula (Topo) que parece um Livro Aberto */}
+          {/* Metade da Pílula (Topo) - Laranja */}
           <path 
             d="M30 45C30 33.9543 38.9543 25 50 25C61.0457 25 70 33.9543 70 45V50H30V45Z" 
-            fill="url(#logo-gradient)" 
+            fill="#F79433" 
           />
           
-          {/* Metade da Pílula (Base) */}
+          {/* Metade da Pílula (Base) - Azul Marinho */}
           <path 
             d="M30 55V60C30 71.0457 38.9543 80 50 80C61.0457 80 70 71.0457 70 60V55H30Z" 
-            fill="#334155" 
+            fill="#212543" 
           />
           
           {/* Páginas do Livro no centro da pílula */}
@@ -45,13 +45,13 @@ const Logo: React.FC<LogoProps> = ({ className = "h-8 w-auto" }) => {
             strokeLinecap="round" 
           />
           
-          {/* Pequena Lâmpada/Faísca de ideia no topo */}
-          <circle cx="50" cy="25" r="4" fill="#fbbf24" className="animate-pulse" />
+          {/* Pequena Lâmpada/Faísca de ideia no topo - Azul Navy para contraste no laranja */}
+          <circle cx="50" cy="25" r="4" fill="#212543" className="animate-pulse" />
         </svg>
       </div>
       <div className="flex flex-col leading-none">
-        <span className="text-xl font-black tracking-tighter text-slate-800">
-          FARMA<span className="text-emerald-600">QUEST</span>
+        <span className="text-xl font-black tracking-tighter text-brand-navy">
+          FARMA<span className="text-brand-orange">QUEST</span>
         </span>
         <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">CONCURSOS FARMACÊUTICOS</span>
       </div>
