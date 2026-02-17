@@ -1,20 +1,26 @@
-
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Carrega variáveis de ambiente baseadas no modo atual (development/production)
-  // Usamos '.' para garantir que encontre o arquivo .env na raiz do projeto
+  // Carrega variáveis do arquivo .env
   const env = loadEnv(mode, '.', '');
+  
+  // Verifica se a API KEY existe (apenas log no terminal de build)
+  if (!env.API_KEY) {
+    console.warn("⚠️  AVISO: API_KEY não encontrada no arquivo .env. O site pode não funcionar corretamente.");
+  }
 
   return {
     plugins: [react()],
     define: {
-      // Garante que process.env.API_KEY funcione no código frontend após o build
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
-      // Polyfill simples para evitar que outras chamadas a process.env quebrem
-      'process.env': {} 
+      // Define process.env.API_KEY com segurança. Se não existir, usa string vazia para não quebrar a sintaxe JS.
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || ""),
+      // Define um objeto global process.env para compatibilidade
+      'process.env': JSON.stringify({
+         NODE_ENV: mode,
+         API_KEY: env.API_KEY || ""
+      })
     }
   }
 })

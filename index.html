@@ -6,6 +6,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FarmaQuest - Concursos Farmacêuticos</title>
     
+    <!-- Script de Segurança para evitar erros de "process is not defined" -->
+    <script>
+      window.process = {
+        env: {
+          NODE_ENV: 'production'
+        }
+      };
+      
+      // Captura erros globais para mostrar na tela se o site falhar
+      window.onerror = function(message, source, lineno, colno, error) {
+        console.error("Erro detectado:", message);
+        // Se o root estiver vazio (tela branca), mostramos o erro
+        setTimeout(function() {
+            const root = document.getElementById('root');
+            if (root && root.innerHTML.trim() === '') {
+                document.body.innerHTML = `
+                    <div style="padding: 20px; font-family: sans-serif; color: #333; text-align: center; margin-top: 50px;">
+                        <h1 style="color: #F79433;">Ops! Algo deu errado.</h1>
+                        <p>O site não conseguiu carregar. Detalhes do erro:</p>
+                        <pre style="background: #f1f1f1; padding: 15px; text-align: left; overflow: auto; border-radius: 8px;">${message}</pre>
+                        <p style="font-size: 12px; color: #666;">Verifique se a API_KEY foi configurada corretamente no arquivo .env antes do build.</p>
+                    </div>
+                `;
+            }
+        }, 1000);
+      };
+    </script>
+    
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

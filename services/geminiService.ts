@@ -1,7 +1,7 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Question, QuestionAnalysis, Exam } from "../types";
 
+// Inicializa a IA com a chave da API diretamente do env conforme guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export async function analyzeQuestion(question: Question): Promise<QuestionAnalysis> {
