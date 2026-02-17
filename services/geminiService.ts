@@ -1,10 +1,29 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Question, QuestionAnalysis, Exam } from "../types";
 
-// Inicializa a IA com a chave da API diretamente do env conforme guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Variável para armazenar a instância da IA (Singleton)
+let aiInstance: GoogleGenAI | null = null;
+
+// Função para obter ou criar a instância da IA com segurança
+const getAI = (): GoogleGenAI => {
+  if (aiInstance) return aiInstance;
+
+  // Obtém a chave definida pelo Vite no build
+  const apiKey = process.env.API_KEY;
+
+  // Verifica se a chave é válida
+  if (!apiKey || apiKey.trim() === '' || apiKey === 'undefined') {
+    throw new Error("CONFIGURAÇÃO_PENDENTE: A API Key do Google Gemini não foi encontrada. Crie um arquivo .env na raiz do projeto com API_KEY=sua_chave_aqui e faça o build novamente.");
+  }
+
+  aiInstance = new GoogleGenAI({ apiKey: apiKey });
+  return aiInstance;
+};
 
 export async function analyzeQuestion(question: Question): Promise<QuestionAnalysis> {
+  const ai = getAI(); // Inicializa aqui, dentro da função
+
   const prompt = `
     Você é um Professor Doutor em Farmácia, especialista em concursos públicos (estilo Estratégia/Gran).
     Analise a questão da banca ${question.institution} (${question.year}) sobre ${question.subject}.
@@ -47,6 +66,8 @@ export async function analyzeQuestion(question: Question): Promise<QuestionAnaly
 }
 
 export async function searchHistoricalQuestions(query: string): Promise<Question[]> {
+    const ai = getAI(); // Inicializa aqui
+    
     const prompt = `
       Atue como um banco de dados de concursos. Recupere 5 questões REAIS que já caíram em provas de Farmacêutico no Brasil.
       Tema: ${query}.
@@ -88,6 +109,8 @@ export async function searchHistoricalQuestions(query: string): Promise<Question
 }
 
 export async function fetchExams(): Promise<Exam[]> {
+  const ai = getAI(); // Inicializa aqui
+  
   const prompt = `
     Liste 6 concursos históricos REAIS e famosos para o cargo de Farmacêutico no Brasil que ocorreram recentemente (2023-2025).
     Exemplos obrigatórios se existirem: EBSERH Nacional, Fiocruz, Anvisa, Perito Criminal Federal/Estadual, Marinha/Exército.
@@ -121,6 +144,8 @@ export async function fetchExams(): Promise<Exam[]> {
 }
 
 export async function fetchQuestionsByExam(examTitle: string): Promise<Question[]> {
+  const ai = getAI(); // Inicializa aqui
+  
   const prompt = `
     Gere 10 questões que reproduzam fielmente a prova de Farmacêutico do concurso: ${examTitle}.
     Mantenha o rigor técnico, vocabulário acadêmico e estilo de pegadinhas da banca original.
